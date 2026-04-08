@@ -75,12 +75,12 @@ class IthoFanDemandNumber(IthoEntity, NumberEntity):
         return min(round(speed / 2.55), 100)
 
     async def async_set_native_value(self, value: float) -> None:
-        """Set the fan demand."""
-        if self.coordinator.use_rf_commands:
+        """Set the fan demand. Tries RF demand first, falls back to speed."""
+        try:
             await self.coordinator.api.send_rf_command("auto")
             demand = int(value * 2)  # 0-100% → 0-200 demand
             await self.coordinator.api.send_rf_demand(demand)
-        else:
+        except Exception:
             import math
             speed = math.ceil(value * 2.55)
             await self.coordinator.api.set_speed(speed)

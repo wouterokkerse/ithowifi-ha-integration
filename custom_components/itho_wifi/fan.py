@@ -107,13 +107,12 @@ class IthoFan(IthoEntity, FanEntity):
         await self.coordinator.async_request_refresh()
 
     async def async_set_percentage(self, percentage: int) -> None:
-        """Set the speed percentage."""
-        if self._use_rf_commands:
-            # RF demand only works in auto mode — send auto first
+        """Set the speed percentage. Tries RF demand first, falls back to speed."""
+        try:
             await self.coordinator.api.send_rf_command("auto")
             demand = percentage * 2  # 0-100% → 0-200 demand
             await self.coordinator.api.send_rf_demand(demand)
-        else:
+        except Exception:
             speed = math.ceil(percentage * 2.55)
             await self.coordinator.api.set_speed(speed)
         await self._async_refresh()
