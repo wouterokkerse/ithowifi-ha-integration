@@ -144,10 +144,14 @@ class IthoWiFiApi:
         )
 
     async def send_command(self, command: str) -> dict[str, Any]:
-        """Send a named fan command."""
-        return await self._request(
-            "POST", API_COMMAND, json_data={"command": command}
-        )
+        """Send a named fan command. Falls back to RF if I2C fails."""
+        try:
+            return await self._request(
+                "POST", API_COMMAND, json_data={"command": command}
+            )
+        except IthoWiFiApiError:
+            # I2C command failed (e.g. no virtual remote) — try RF
+            return await self.send_rf_command(command)
 
     async def set_speed(
         self, speed: int, timer: int | None = None
