@@ -70,7 +70,7 @@ class IthoFanDemandNumber(IthoEntity, NumberEntity):
 
     async def async_set_native_value(self, value: float) -> None:
         """Set the fan demand."""
-        if self.coordinator.rf_standalone:
+        if self.coordinator.use_rf_commands:
             await self.coordinator.api.send_rf_command("auto")
             demand = int(value * 2)  # 0-100% → 0-200 demand
             await self.coordinator.api.send_rf_demand(demand)

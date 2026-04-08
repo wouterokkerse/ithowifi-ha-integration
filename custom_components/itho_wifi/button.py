@@ -69,7 +69,7 @@ class IthoCommandButton(IthoEntity, ButtonEntity):
 
     async def async_press(self) -> None:
         """Handle the button press."""
-        if self.coordinator.rf_standalone:
+        if self.coordinator.use_rf_commands:
             await self.coordinator.api.send_rf_command(
                 self.entity_description.key
             )

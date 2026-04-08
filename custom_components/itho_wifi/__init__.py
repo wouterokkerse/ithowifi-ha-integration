@@ -44,9 +44,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
     rf_source_name = entry.options.get(CONF_RF_SOURCE)
 
+    # Use RF commands when in standalone mode or RF CO2 control interface
+    use_rf_commands = (
+        rf_standalone
+        or device_coordinator.data.get("itho_control_interface", 0) == 1
+    )
+
     status_coordinator = IthoStatusCoordinator(
         hass, api, rf_standalone=rf_standalone, rf_source_name=rf_source_name
     )
+    status_coordinator.use_rf_commands = use_rf_commands
     await status_coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})

@@ -95,19 +95,19 @@ class IthoFan(IthoEntity, FanEntity):
         return min(round(speed / 2.55), 100)
 
     @property
-    def _rf_standalone(self) -> bool:
-        """Return True if in RF standalone mode."""
-        return self.coordinator.rf_standalone
+    def _use_rf_commands(self) -> bool:
+        """Return True if commands should use RF (standalone or RF CO2 mode)."""
+        return self.coordinator.use_rf_commands
 
     async def _async_refresh(self) -> None:
         """Refresh after command — delay in RF mode for data to arrive."""
-        if self._rf_standalone:
+        if self._use_rf_commands:
             await asyncio.sleep(5)
         await self.coordinator.async_request_refresh()
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set the speed percentage."""
-        if self._rf_standalone:
+        if self._use_rf_commands:
             # RF demand only works in auto mode — send auto first
             await self.coordinator.api.send_rf_command("auto")
             demand = percentage * 2  # 0-100% → 0-200 demand
@@ -119,7 +119,7 @@ class IthoFan(IthoEntity, FanEntity):
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set the preset mode."""
-        if self._rf_standalone:
+        if self._use_rf_commands:
             await self.coordinator.api.send_rf_command(preset_mode)
         else:
             await self.coordinator.api.send_command(preset_mode)
@@ -137,7 +137,7 @@ class IthoFan(IthoEntity, FanEntity):
         elif percentage is not None:
             await self.async_set_percentage(percentage)
         else:
-            if self._rf_standalone:
+            if self._use_rf_commands:
                 await self.coordinator.api.send_rf_command("medium")
             else:
                 await self.coordinator.api.send_command("medium")
@@ -145,7 +145,7 @@ class IthoFan(IthoEntity, FanEntity):
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn off the fan."""
-        if self._rf_standalone:
+        if self._use_rf_commands:
             await self.coordinator.api.send_rf_command("low")
         else:
             await self.coordinator.api.set_speed(0)

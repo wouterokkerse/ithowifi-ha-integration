@@ -38,6 +38,7 @@ class IthoStatusCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self.api = api
         self.rf_standalone = rf_standalone
         self.rf_source_name = rf_source_name
+        self.use_rf_commands = False  # set by __init__.py
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch status data from the device."""
