@@ -13,7 +13,11 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import IthoWiFiApi
 from .const import CONF_RF_SOURCE, DOMAIN
-from .coordinator import IthoDeviceInfoCoordinator, IthoStatusCoordinator
+from .coordinator import (
+    IthoDeviceInfoCoordinator,
+    IthoRemotesCoordinator,
+    IthoStatusCoordinator,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -57,11 +61,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     status_coordinator.use_rf_commands = use_rf_commands
     await status_coordinator.async_config_entry_first_refresh()
 
+    # Remotes coordinator drives per-remote fan entities. First refresh is
+    # allowed to fail (empty data) — this is an additive feature and the
+    # main fan / sensors / update entity should still work even if the
+    # remotes endpoint is unreachable.
+    remotes_coordinator = IthoRemotesCoordinator(hass, api)
+    try:
+        await remotes_coordinator.async_config_entry_first_refresh()
+    except Exception as err:  # noqa: BLE001
+        _LOGGER.warning("Initial remotes fetch failed: %s", err)
+
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {
         "api": api,
         "status_coordinator": status_coordinator,
         "device_coordinator": device_coordinator,
+        "remotes_coordinator": remotes_coordinator,
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

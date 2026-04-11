@@ -67,6 +67,19 @@ def is_fan_device(itho_devtype: str | None) -> bool:
 CONF_SENSORS = "sensors"
 CONF_DIAGNOSTICS = "diagnostics"
 CONF_RF_SOURCE = "rf_source"
+# List of per-remote fan selections, each entry "vr:<index>" or "rf:<index>"
+CONF_REMOTE_FANS = "remote_fans"
+
+# DemandFlow uses per-remote fans only (no main IthoFan). Detected by substring
+# so "DemandFlow" alone matches.
+DEMANDFLOW_DEVICE_TYPES = ("DemandFlow",)
+
+
+def is_demandflow_device(itho_devtype: str | None) -> bool:
+    """Return True if the device is a DemandFlow ventilation unit."""
+    if not itho_devtype:
+        return False
+    return any(t in itho_devtype for t in DEMANDFLOW_DEVICE_TYPES)
 
 # Diagnostic sensor keys (entity_category = DIAGNOSTIC)
 DIAGNOSTIC_KEYS = {
@@ -83,3 +96,4 @@ DIAGNOSTIC_KEYS = {
 # Update intervals in seconds
 UPDATE_INTERVAL_STATUS = 10
 UPDATE_INTERVAL_DEVICEINFO = 300
+UPDATE_INTERVAL_REMOTES = 30

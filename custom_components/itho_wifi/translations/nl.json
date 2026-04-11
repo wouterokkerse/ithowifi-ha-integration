@@ -17,6 +17,13 @@
           "sensors": "Sensoren",
           "diagnostics": "Diagnostische items"
         }
+      },
+      "remote_fans": {
+        "title": "RF- en Virtuele-afstandsbedieningen ({device_type})",
+        "description": "Optioneel kan elke geconfigureerde RF-zendafstandsbediening of virtuele afstandsbediening als een eigen fan-entiteit worden aangemaakt, zodat je ze individueel kunt aansturen vanuit Home Assistant. Dit is naast de hoofd-fan-entiteit. Bij DemandFlow-apparaten zijn alle geconfigureerde afstandsbedieningen standaard aangevinkt; bij andere apparaattypes geen enkele. Dit kan later worden aangepast via de integratie-opties.",
+        "data": {
+          "remote_fans": "Afstandsbedieningen als fan-entiteit aanbieden"
+        }
       }
     },
     "error": {
@@ -31,11 +38,13 @@
   "options": {
     "step": {
       "init": {
-        "title": "Sensoren configureren",
-        "description": "Selecteer welke sensoren en diagnostische items je wilt opnemen.",
+        "title": "IthoWiFi configureren",
+        "description": "Selecteer welke sensoren en diagnostische items je wilt opnemen, en welke RF- of virtuele afstandsbedieningen als individuele fan-entiteiten aangeboden moeten worden.",
         "data": {
           "sensors": "Sensoren",
-          "diagnostics": "Diagnostische items"
+          "diagnostics": "Diagnostische items",
+          "rf_source": "RF-bron",
+          "remote_fans": "RF- en Virtuele-afstandsbedieningen"
         }
       }
     }

@@ -24,6 +24,13 @@
           "sensors": "Sensors",
           "diagnostics": "Diagnostic items"
         }
+      },
+      "remote_fans": {
+        "title": "RF and Virtual Remote devices ({device_type})",
+        "description": "Optionally expose each configured RF send remote or virtual remote as its own fan entity, so you can control them individually from Home Assistant. This is in addition to the main fan entity. DemandFlow devices have all configured remotes pre-selected; other device types default to none. You can change this later in the integration options.",
+        "data": {
+          "remote_fans": "Remotes to expose as fan entities"
+        }
       }
     },
     "error": {
@@ -38,11 +45,13 @@
   "options": {
     "step": {
       "init": {
-        "title": "Configure sensors",
-        "description": "Select which sensors and diagnostic items to include.",
+        "title": "Configure IthoWiFi",
+        "description": "Select which sensors and diagnostic items to include, and which RF or virtual remotes to expose as individual fan entities.",
         "data": {
           "sensors": "Sensors",
-          "diagnostics": "Diagnostic items"
+          "diagnostics": "Diagnostic items",
+          "rf_source": "RF source",
+          "remote_fans": "RF and Virtual Remote devices"
         }
       }
     }

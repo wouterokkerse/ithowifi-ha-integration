@@ -12,8 +12,13 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 
-from .api import IthoWiFiApi, IthoWiFiApiError, IthoWiFiConnectionError
-from .const import DOMAIN, UPDATE_INTERVAL_DEVICEINFO, UPDATE_INTERVAL_STATUS
+from .api import IthoWiFiApi, IthoWiFiApiError, IthoWiFiConnectionError, IthoWiFiNotFoundError
+from .const import (
+    DOMAIN,
+    UPDATE_INTERVAL_DEVICEINFO,
+    UPDATE_INTERVAL_REMOTES,
+    UPDATE_INTERVAL_STATUS,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -85,3 +90,55 @@ class IthoDeviceInfoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise UpdateFailed(f"Connection error: {err}") from err
         except IthoWiFiApiError as err:
             raise UpdateFailed(f"API error: {err}") from err
+
+
+class IthoRemotesCoordinator(DataUpdateCoordinator[dict[str, Any]]):
+    """Coordinator for per-remote state (RF + virtual) used by per-remote fans.
+
+    Polls /api/v2/remotes and /api/v2/vremotes and stores the result as
+    {"rf": [...], "vr": [...]} with each entry being a dict with index,
+    name, remtype, remtypename, remfunc, remfuncname, last_cmd, and
+    isEmptySlot (computed locally).
+    """
+
+    def __init__(self, hass: HomeAssistant, api: IthoWiFiApi) -> None:
+        """Initialize the remotes coordinator."""
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=f"{DOMAIN}_remotes",
+            update_interval=timedelta(seconds=UPDATE_INTERVAL_REMOTES),
+        )
+        self.api = api
+        # True if the firmware exposes /api/v2/vremotes. Older firmware
+        # (<3.1.0-beta3) exists but returned an empty object and doesn't
+        # populate last_cmd. On 404, the coordinator keeps its last data
+        # and stops polling the missing endpoint.
+        self.vremotes_available: bool = True
+
+    async def _async_update_data(self) -> dict[str, Any]:
+        """Fetch both remote lists from the device."""
+        rf_list: list[dict[str, Any]] = []
+        vr_list: list[dict[str, Any]] = []
+
+        try:
+            rf_list = await self.api.get_remotes()
+        except IthoWiFiNotFoundError:
+            rf_list = []
+        except IthoWiFiConnectionError as err:
+            raise UpdateFailed(f"Connection error: {err}") from err
+        except IthoWiFiApiError as err:
+            raise UpdateFailed(f"API error: {err}") from err
+
+        if self.vremotes_available:
+            try:
+                vr_list = await self.api.get_vremotes()
+            except IthoWiFiNotFoundError:
+                self.vremotes_available = False
+            except IthoWiFiConnectionError as err:
+                raise UpdateFailed(f"Connection error: {err}") from err
+            except IthoWiFiApiError:
+                # Tolerate a transient vremotes failure — keep rf data.
+                pass
+
+        return {"rf": rf_list, "vr": vr_list}

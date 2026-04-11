@@ -16,6 +16,7 @@ from .const import (
     API_LASTCMD,
     API_OTA,
     API_QUEUE,
+    API_REMOTES,
     API_RF_CO2,
     API_RF_COMMAND,
     API_RF_DEMAND,
@@ -23,6 +24,7 @@ from .const import (
     API_SETTINGS,
     API_SPEED,
     API_VREMOTE,
+    API_VREMOTES,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -119,6 +121,27 @@ class IthoWiFiApi:
         """Get device information."""
         data = await self._request("GET", API_DEVICEINFO)
         return data.get("deviceinfo", data)
+
+    async def get_remotes(self) -> list[dict[str, Any]]:
+        """Get RF remotes configuration as a list of per-slot dicts.
+
+        Returns the `remotes` array added in firmware 3.1.0-beta1 (full
+        config). Each entry is a dict with keys: index, id, name, remfunc,
+        remfuncname, remtype, remtypename, bidirectional, tx_power, and
+        optionally last_cmd and capabilities.
+        """
+        data = await self._request("GET", API_REMOTES)
+        return data.get("remotes", [])
+
+    async def get_vremotes(self) -> list[dict[str, Any]]:
+        """Get virtual remotes configuration as a list of per-slot dicts.
+
+        Returns the vremotesinfo array from /api/v2/vremotes. Each entry
+        has the same shape as a `remotes` entry. last_cmd was added in
+        firmware 3.1.0-beta3.
+        """
+        data = await self._request("GET", API_VREMOTES)
+        return data.get("vremotesinfo", [])
 
     async def get_rfstatus(self, name: str | None = None) -> dict[str, Any]:
         """Get RF status data from tracked sources."""
