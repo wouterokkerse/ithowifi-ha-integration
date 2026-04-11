@@ -22,6 +22,7 @@ from .const import (
     PRESET_HIGH,
     PRESET_LOW,
     PRESET_MEDIUM,
+    is_fan_device,
 )
 from .coordinator import IthoDeviceInfoCoordinator, IthoStatusCoordinator
 from .entity import IthoEntity
@@ -43,8 +44,13 @@ async def async_setup_entry(
 ) -> None:
     """Set up the IthoWiFi fan."""
     data = hass.data[DOMAIN][entry.entry_id]
+    device_coord = data["device_coordinator"]
+    devtype = (device_coord.data or {}).get("itho_devtype")
+    if not is_fan_device(devtype):
+        # Heatpump / AutoTemp / DemandFlow devices have no fan to control.
+        return
     async_add_entities(
-        [IthoFan(data["status_coordinator"], data["device_coordinator"])]
+        [IthoFan(data["status_coordinator"], device_coord)]
     )
 
 

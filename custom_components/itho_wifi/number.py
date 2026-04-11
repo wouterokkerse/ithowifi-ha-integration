@@ -11,7 +11,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DOMAIN, is_fan_device
 from .coordinator import IthoDeviceInfoCoordinator, IthoStatusCoordinator
 from .entity import IthoEntity
 
@@ -27,6 +27,11 @@ async def async_setup_entry(
     data = hass.data[DOMAIN][entry.entry_id]
     status_coord: IthoStatusCoordinator = data["status_coordinator"]
     device_coord: IthoDeviceInfoCoordinator = data["device_coordinator"]
+
+    devtype = (device_coord.data or {}).get("itho_devtype")
+    if not is_fan_device(devtype):
+        # Heatpump / AutoTemp / DemandFlow devices have no fan demand.
+        return
 
     entities: list[NumberEntity] = [
         IthoFanDemandNumber(status_coord, device_coord),

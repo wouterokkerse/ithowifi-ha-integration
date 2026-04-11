@@ -8,7 +8,7 @@ from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import COOK_DEVICE_TYPES, COOK_PRESETS, DOMAIN, TIMER_PRESETS
+from .const import COOK_DEVICE_TYPES, COOK_PRESETS, DOMAIN, TIMER_PRESETS, is_fan_device
 from .coordinator import IthoDeviceInfoCoordinator, IthoStatusCoordinator
 from .entity import IthoEntity
 
@@ -26,25 +26,27 @@ async def async_setup_entry(
     entities: list[ButtonEntity] = []
     device_type = (device_coord.data or {}).get("itho_devtype", "")
 
-    # Timer preset buttons
-    presets = {**TIMER_PRESETS}
-    if any(dt in device_type for dt in COOK_DEVICE_TYPES):
-        presets.update(COOK_PRESETS)
+    # Timer/cook preset buttons only make sense for fan/ventilation devices.
+    # Heatpump / AutoTemp / DemandFlow have no fan presets.
+    if is_fan_device(device_type):
+        presets = {**TIMER_PRESETS}
+        if any(dt in device_type for dt in COOK_DEVICE_TYPES):
+            presets.update(COOK_PRESETS)
 
-    for cmd, label in presets.items():
-        entities.append(
-            IthoCommandButton(
-                status_coord,
-                device_coord,
-                ButtonEntityDescription(
-                    key=cmd,
-                    name=label,
-                    icon="mdi:timer-outline",
-                ),
+        for cmd, label in presets.items():
+            entities.append(
+                IthoCommandButton(
+                    status_coord,
+                    device_coord,
+                    ButtonEntityDescription(
+                        key=cmd,
+                        name=label,
+                        icon="mdi:timer-outline",
+                    ),
+                )
             )
-        )
 
-    # Reboot button
+    # Reboot button — always available regardless of device type.
     entities.append(IthoRebootButton(status_coord, device_coord))
 
     async_add_entities(entities)

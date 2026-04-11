@@ -47,6 +47,22 @@ COOK_PRESETS = {
 # Device types that support cook presets
 COOK_DEVICE_TYPES = {"QualityFlow", "DemandFlow"}
 
+# Device types that are NOT fans/ventilation units. For these, the integration
+# should not register the main fan / preset-button / fan-demand entities.
+# DemandFlow IS a fan-control device but uses a per-remote model — handled
+# separately, not via this list. Matched with substring checks so "AutoTemp
+# Basic" also matches "AutoTemp".
+NON_FAN_DEVICE_TYPES = ("Heatpump", "AutoTemp")
+
+
+def is_fan_device(itho_devtype: str | None) -> bool:
+    """Return True if the given device type is a ventilation/fan unit."""
+    if not itho_devtype:
+        # Unknown / generic device — assume fan-like (RF standalone setups,
+        # generic remotes, etc. all fall into this bucket).
+        return True
+    return not any(t in itho_devtype for t in NON_FAN_DEVICE_TYPES)
+
 # Config keys
 CONF_SENSORS = "sensors"
 CONF_DIAGNOSTICS = "diagnostics"
