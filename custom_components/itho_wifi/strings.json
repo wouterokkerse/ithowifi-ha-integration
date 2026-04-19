@@ -58,10 +58,7 @@
   },
   "entity": {
     "number": {
-      "co2_send_value": { "name": "CO2 send value" }
-    },
-    "button": {
-      "send_co2": { "name": "Send CO2" }
+      "co2_level": { "name": "CO2 level" }
     },
     "sensor": {
       "temperature": { "name": "Temperature" },

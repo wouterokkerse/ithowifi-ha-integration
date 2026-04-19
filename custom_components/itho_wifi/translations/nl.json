@@ -51,10 +51,7 @@
   },
   "entity": {
     "number": {
-      "co2_send_value": { "name": "CO2-verzendwaarde" }
-    },
-    "button": {
-      "send_co2": { "name": "CO2 verzenden" }
+      "co2_level": { "name": "CO2-niveau" }
     },
     "sensor": {
       "temperature": { "name": "Temperatuur" },

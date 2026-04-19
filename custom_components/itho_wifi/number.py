@@ -6,14 +6,15 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN, is_fan_device
 from .coordinator import (
     IthoDeviceInfoCoordinator,
+    IthoRemotesCoordinator,
     IthoStatusCoordinator,
 )
 from .entity import IthoEntity
+from .fan import pick_main_fan_rf_index
 
 
 async def async_setup_entry(
@@ -25,6 +26,7 @@ async def async_setup_entry(
     data = hass.data[DOMAIN][entry.entry_id]
     status_coord: IthoStatusCoordinator = data["status_coordinator"]
     device_coord: IthoDeviceInfoCoordinator = data["device_coordinator"]
+    remotes_coord: IthoRemotesCoordinator = data["remotes_coordinator"]
 
     devtype = (device_coord.data or {}).get("itho_devtype")
     entities: list[NumberEntity] = []
@@ -34,7 +36,7 @@ async def async_setup_entry(
 
     if status_coord.use_rf_commands:
         entities.append(
-            IthoCO2LevelNumber(status_coord, device_coord, entry.entry_id)
+            IthoCO2LevelNumber(status_coord, device_coord, remotes_coord)
         )
 
     if not entities:
@@ -95,11 +97,11 @@ class IthoFanDemandNumber(IthoEntity, NumberEntity):
         await self.coordinator.async_request_refresh()
 
 
-class IthoCO2LevelNumber(IthoEntity, NumberEntity, RestoreEntity):
-    """Number entity for staging a CO2 value for RF send."""
+class IthoCO2LevelNumber(IthoEntity, NumberEntity):
+    """Number entity for sending a CO2 value via RF."""
 
-    _attr_name = "CO2 send value"
-    _attr_translation_key = "co2_send_value"
+    _attr_name = "CO2 level"
+    _attr_translation_key = "co2_level"
     _attr_icon = "mdi:molecule-co2"
     _attr_native_min_value = 400
     _attr_native_max_value = 5000
@@ -111,36 +113,29 @@ class IthoCO2LevelNumber(IthoEntity, NumberEntity, RestoreEntity):
         self,
         coordinator: IthoStatusCoordinator,
         device_info_coordinator: IthoDeviceInfoCoordinator,
-        entry_id: str,
+        remotes_coordinator: IthoRemotesCoordinator,
     ) -> None:
         """Initialize the CO2 number entity."""
         super().__init__(coordinator, device_info_coordinator)
-        self._entry_id = entry_id
+        self._remotes_coordinator = remotes_coordinator
         info = device_info_coordinator.data or {}
         self._attr_unique_id = f"{info.get('add-on_hwid', 'itho')}_co2_level"
-        self._attr_native_value = 400
 
     @property
     def native_value(self) -> float | None:
-        """Return the staged CO2 send value."""
-        return self._attr_native_value
-
-    async def async_added_to_hass(self) -> None:
-        """Restore the last staged CO2 value."""
-        await super().async_added_to_hass()
-        last_state = await self.async_get_last_state()
-        if last_state is None:
-            return
-        try:
-            self._attr_native_value = float(last_state.state)
-        except (TypeError, ValueError):
-            return
-        self.hass.data[DOMAIN][self._entry_id]["rf_co2_value"] = int(
-            self._attr_native_value
-        )
+        """Return the current CO2 value when available."""
+        if self.coordinator.data is None:
+            return None
+        status = self.coordinator.data.get("status", {})
+        for key in ("CO2level (ppm)", "co2", "co2level", "co2_ppm"):
+            value = status.get(key)
+            if value is None or value == "not available":
+                continue
+            return float(value)
+        return None
 
     async def async_set_native_value(self, value: float) -> None:
-        """Stage a CO2 value without sending it immediately."""
-        self._attr_native_value = value
-        self.hass.data[DOMAIN][self._entry_id]["rf_co2_value"] = int(value)
-        self.async_write_ha_state()
+        """Send a CO2 value through the RF interface."""
+        index = pick_main_fan_rf_index(self._remotes_coordinator)
+        await self.coordinator.api.send_rf_co2(int(value), index=index)
+        await self.coordinator.async_request_refresh()
