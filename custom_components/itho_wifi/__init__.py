@@ -77,6 +77,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "status_coordinator": status_coordinator,
         "device_coordinator": device_coordinator,
         "remotes_coordinator": remotes_coordinator,
+        "rf_co2_value": 400,
     }
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

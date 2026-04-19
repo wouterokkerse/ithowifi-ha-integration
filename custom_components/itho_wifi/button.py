@@ -35,6 +35,7 @@ async def async_setup_entry(
     data = hass.data[DOMAIN][entry.entry_id]
     status_coord: IthoStatusCoordinator = data["status_coordinator"]
     device_coord: IthoDeviceInfoCoordinator = data["device_coordinator"]
+    remotes_coord = data.get("remotes_coordinator")
 
     entities: list[ButtonEntity] = []
     device_type = (device_coord.data or {}).get("itho_devtype", "")
@@ -84,9 +85,15 @@ async def async_setup_entry(
     # Reboot button — always available regardless of device type.
     entities.append(IthoRebootButton(status_coord, device_coord))
 
+    if status_coord.use_rf_commands and remotes_coord is not None:
+        entities.append(
+            IthoSendCO2Button(
+                status_coord, device_coord, remotes_coord, entry.entry_id
+            )
+        )
+
     # Rescan remotes button — forces a refresh of the remotes coordinator
     # so a newly-added/renamed/removed remote is reflected immediately.
-    remotes_coord = data.get("remotes_coordinator")
     if remotes_coord is not None:
         entities.append(IthoRescanRemotesButton(device_coord, remotes_coord))
 
@@ -154,6 +161,34 @@ class IthoRebootButton(IthoEntity, ButtonEntity):
     async def async_press(self) -> None:
         """Handle the button press."""
         await self.coordinator.api.reboot()
+
+
+class IthoSendCO2Button(IthoEntity, ButtonEntity):
+    """Button that sends the staged CO2 value via RF."""
+
+    _attr_name = "Send CO2"
+    _attr_translation_key = "send_co2"
+    _attr_icon = "mdi:send"
+
+    def __init__(
+        self,
+        coordinator: IthoStatusCoordinator,
+        device_info_coordinator: IthoDeviceInfoCoordinator,
+        remotes_coordinator: IthoRemotesCoordinator,
+        entry_id: str,
+    ) -> None:
+        """Initialize the send CO2 button."""
+        super().__init__(coordinator, device_info_coordinator)
+        self._remotes_coordinator = remotes_coordinator
+        self._entry_id = entry_id
+        info = device_info_coordinator.data or {}
+        self._attr_unique_id = f"{info.get('add-on_hwid', 'itho')}_send_co2"
+
+    async def async_press(self) -> None:
+        """Send the staged CO2 value."""
+        value = self.hass.data[DOMAIN][self._entry_id]["rf_co2_value"]
+        index = pick_main_fan_rf_index(self._remotes_coordinator)
+        await self.coordinator.api.send_rf_co2(int(value), index=index)
 
 
 class IthoRescanRemotesButton(ButtonEntity):

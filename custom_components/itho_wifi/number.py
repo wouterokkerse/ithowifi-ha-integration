@@ -2,20 +2,18 @@
 
 from __future__ import annotations
 
-import logging
-from typing import Any
-
 from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import DOMAIN, is_fan_device
-from .coordinator import IthoDeviceInfoCoordinator, IthoStatusCoordinator
+from .coordinator import (
+    IthoDeviceInfoCoordinator,
+    IthoStatusCoordinator,
+)
 from .entity import IthoEntity
-
-_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -23,19 +21,24 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up IthoWiFi number entities for fan demand."""
+    """Set up IthoWiFi number entities."""
     data = hass.data[DOMAIN][entry.entry_id]
     status_coord: IthoStatusCoordinator = data["status_coordinator"]
     device_coord: IthoDeviceInfoCoordinator = data["device_coordinator"]
 
     devtype = (device_coord.data or {}).get("itho_devtype")
-    if not is_fan_device(devtype):
-        # Heatpump / AutoTemp / DemandFlow devices have no fan demand.
-        return
+    entities: list[NumberEntity] = []
 
-    entities: list[NumberEntity] = [
-        IthoFanDemandNumber(status_coord, device_coord),
-    ]
+    if is_fan_device(devtype):
+        entities.append(IthoFanDemandNumber(status_coord, device_coord))
+
+    if status_coord.use_rf_commands:
+        entities.append(
+            IthoCO2LevelNumber(status_coord, device_coord, entry.entry_id)
+        )
+
+    if not entities:
+        return
 
     async_add_entities(entities)
 
@@ -90,3 +93,54 @@ class IthoFanDemandNumber(IthoEntity, NumberEntity):
             speed = math.ceil(value * 2.55)
             await self.coordinator.api.set_speed(speed)
         await self.coordinator.async_request_refresh()
+
+
+class IthoCO2LevelNumber(IthoEntity, NumberEntity, RestoreEntity):
+    """Number entity for staging a CO2 value for RF send."""
+
+    _attr_name = "CO2 send value"
+    _attr_translation_key = "co2_send_value"
+    _attr_icon = "mdi:molecule-co2"
+    _attr_native_min_value = 400
+    _attr_native_max_value = 5000
+    _attr_native_step = 1
+    _attr_native_unit_of_measurement = "ppm"
+    _attr_mode = NumberMode.BOX
+
+    def __init__(
+        self,
+        coordinator: IthoStatusCoordinator,
+        device_info_coordinator: IthoDeviceInfoCoordinator,
+        entry_id: str,
+    ) -> None:
+        """Initialize the CO2 number entity."""
+        super().__init__(coordinator, device_info_coordinator)
+        self._entry_id = entry_id
+        info = device_info_coordinator.data or {}
+        self._attr_unique_id = f"{info.get('add-on_hwid', 'itho')}_co2_level"
+        self._attr_native_value = 400
+
+    @property
+    def native_value(self) -> float | None:
+        """Return the staged CO2 send value."""
+        return self._attr_native_value
+
+    async def async_added_to_hass(self) -> None:
+        """Restore the last staged CO2 value."""
+        await super().async_added_to_hass()
+        last_state = await self.async_get_last_state()
+        if last_state is None:
+            return
+        try:
+            self._attr_native_value = float(last_state.state)
+        except (TypeError, ValueError):
+            return
+        self.hass.data[DOMAIN][self._entry_id]["rf_co2_value"] = int(
+            self._attr_native_value
+        )
+
+    async def async_set_native_value(self, value: float) -> None:
+        """Stage a CO2 value without sending it immediately."""
+        self._attr_native_value = value
+        self.hass.data[DOMAIN][self._entry_id]["rf_co2_value"] = int(value)
+        self.async_write_ha_state()

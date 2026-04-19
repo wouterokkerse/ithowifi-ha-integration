@@ -57,6 +57,12 @@
     }
   },
   "entity": {
+    "number": {
+      "co2_send_value": { "name": "CO2 send value" }
+    },
+    "button": {
+      "send_co2": { "name": "Send CO2" }
+    },
     "sensor": {
       "temperature": { "name": "Temperature" },
       "humidity": { "name": "Humidity" },

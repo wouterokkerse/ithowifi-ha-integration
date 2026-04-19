@@ -50,6 +50,12 @@
     }
   },
   "entity": {
+    "number": {
+      "co2_send_value": { "name": "CO2-verzendwaarde" }
+    },
+    "button": {
+      "send_co2": { "name": "CO2 verzenden" }
+    },
     "sensor": {
       "temperature": { "name": "Temperatuur" },
       "humidity": { "name": "Luchtvochtigheid" },
